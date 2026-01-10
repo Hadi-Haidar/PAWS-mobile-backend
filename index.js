@@ -1,15 +1,41 @@
-// index.js
 const express = require("express");
+const cors = require("cors");
+const morgan = require("morgan");
+const helmet = require("helmet");
+const compression = require("compression");
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
-// middleware
+// Middleware
 app.use(express.json());
+app.use(cors());
+app.use(morgan("dev"));
+app.use(helmet());
+app.use(compression());
 
-// test route
-app.get("/", (req, res) => {
-    res.json({ message: "PAWS backend is running 🐾" });
+// Routes
+const supabase = require('./src/config/supabaseClient');
+const petRoutes = require('./src/routes/petRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const appointmentRoutes = require('./src/routes/appointmentRoutes');
+
+app.use('/api/pets', petRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/appointments', appointmentRoutes);
+
+// Test Route
+app.get("/", async (req, res) => {
+    const { data, error } = await supabase.from('Pet').select('count', { count: 'exact', head: true });
+
+    if (error) {
+        return res.status(500).json({ message: "PAWS Backend Running", dbStatus: "Error connecting to Supabase", error: error.message });
+    }
+
+    res.json({ message: "PAWS Backend Running 🐾", dbStatus: "Connected to Supabase" });
 });
 
 app.listen(PORT, () => {
