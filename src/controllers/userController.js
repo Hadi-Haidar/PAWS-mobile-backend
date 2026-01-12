@@ -21,6 +21,37 @@ const getUserProfile = async (req, res) => {
     }
 };
 
+const deleteUser = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        // Delete user data from the User table
+        const { error: deleteError } = await supabase
+            .from('User')
+            .delete()
+            .eq('id', userId);
+
+        if (deleteError) {
+            console.error('Error deleting user data:', deleteError);
+            return res.status(500).json({ error: 'Failed to delete user data' });
+        }
+
+        // Delete the user from Supabase Auth
+        const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId);
+
+        if (authDeleteError) {
+            console.error('Error deleting auth user:', authDeleteError);
+            return res.status(500).json({ error: 'Failed to delete authentication record' });
+        }
+
+        res.json({ message: 'User account deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting user:', err);
+        res.status(500).json({ error: 'Failed to delete user account' });
+    }
+};
+
 module.exports = {
-    getUserProfile
+    getUserProfile,
+    deleteUser
 };

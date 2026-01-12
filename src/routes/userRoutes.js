@@ -6,5 +6,6 @@ const authenticateUser = require('../middleware/authMiddleware');
 
 // Protected routes
 router.get('/profile', authenticateUser, userController.getUserProfile);
+router.delete('/delete', authenticateUser, userController.deleteUser);
 
 module.exports = router;

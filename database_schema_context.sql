@@ -11,17 +11,6 @@ CREATE TABLE public.AiReport (
   CONSTRAINT AiReport_pkey PRIMARY KEY (id),
   CONSTRAINT AiReport_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id)
 );
-CREATE TABLE public.Application (
-  id integer NOT NULL DEFAULT nextval('"Application_id_seq"'::regclass),
-  status text NOT NULL DEFAULT 'PENDING'::text CHECK (status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text])),
-  notes text,
-  petId integer NOT NULL,
-  userId uuid NOT NULL,
-  createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  CONSTRAINT Application_pkey PRIMARY KEY (id),
-  CONSTRAINT Application_petId_fkey FOREIGN KEY (petId) REFERENCES public.Pet(id),
-  CONSTRAINT Application_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id)
-);
 CREATE TABLE public.Appointment (
   id integer NOT NULL DEFAULT nextval('"Appointment_id_seq"'::regclass),
   date timestamp with time zone NOT NULL,
@@ -43,10 +32,7 @@ CREATE TABLE public.Donation (
   id integer NOT NULL DEFAULT nextval('"Donation_id_seq"'::regclass),
   amount numeric NOT NULL,
   currency text NOT NULL DEFAULT 'USD'::text,
-  status text NOT NULL DEFAULT 'PENDING'::text,
-  paymentId text,
   message text,
-  anonymous boolean DEFAULT false,
   userId uuid,
   createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT Donation_pkey PRIMARY KEY (id),
@@ -77,7 +63,6 @@ CREATE TABLE public.Message (
   isRead boolean,
   createdAt timestamp without time zone,
   CONSTRAINT Message_pkey PRIMARY KEY (id),
-  CONSTRAINT Message_ticketId_fkey FOREIGN KEY (ticketId) REFERENCES public.Ticket(id),
   CONSTRAINT Message_senderId_fkey FOREIGN KEY (senderId) REFERENCES public.User(id)
 );
 CREATE TABLE public.Order (
@@ -88,8 +73,10 @@ CREATE TABLE public.Order (
   userId uuid NOT NULL,
   items jsonb NOT NULL,
   createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  product_id integer,
   CONSTRAINT Order_pkey PRIMARY KEY (id),
-  CONSTRAINT Order_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id)
+  CONSTRAINT Order_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id),
+  CONSTRAINT Order_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.Product(id)
 );
 CREATE TABLE public.Pet (
   id integer NOT NULL DEFAULT nextval('"Pet_id_seq"'::regclass),
@@ -100,10 +87,12 @@ CREATE TABLE public.Pet (
   location text NOT NULL,
   images jsonb NOT NULL DEFAULT '[]'::jsonb,
   description text NOT NULL,
-  status text NOT NULL DEFAULT '''Stray'',''Adopted''::text'::text CHECK (status = ANY (ARRAY['Stray'::text, 'Adopted'::text])),
+  status text NOT NULL DEFAULT '''''Stray'''',''''Adopted'''',"Pending","Rejected"::text''''::text''::text'::text CHECK (status = ANY (ARRAY['Stray'::text, 'Adopted'::text])),
   ownerId uuid NOT NULL,
   createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   adoptedAt timestamp with time zone,
+  Longitude numeric,
+  Latitude numeric,
   CONSTRAINT Pet_pkey PRIMARY KEY (id),
   CONSTRAINT Pet_ownerId_fkey FOREIGN KEY (ownerId) REFERENCES public.User(id)
 );
@@ -116,22 +105,6 @@ CREATE TABLE public.Product (
   imageUrl text NOT NULL,
   category text NOT NULL,
   CONSTRAINT Product_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.Ticket (
-  id integer NOT NULL DEFAULT nextval('"Ticket_id_seq"'::regclass),
-  subject text NOT NULL,
-  category text NOT NULL,
-  status text NOT NULL DEFAULT 'OPEN'::text CHECK (status = ANY (ARRAY['OPEN'::text, 'IN_PROGRESS'::text, 'CLOSED'::text])),
-  userId uuid NOT NULL,
-  createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
-  imageUrl text,
-  location_name text,
-  latitude numeric,
-  longitude numeric,
-  convertedPetId integer,
-  CONSTRAINT Ticket_pkey PRIMARY KEY (id),
-  CONSTRAINT Ticket_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id),
-  CONSTRAINT Ticket_convertedPetId_fkey FOREIGN KEY (convertedPetId) REFERENCES public.Pet(id)
 );
 CREATE TABLE public.User (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
