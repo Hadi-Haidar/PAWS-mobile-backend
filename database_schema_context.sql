@@ -14,14 +14,14 @@ CREATE TABLE public.AiReport (
 CREATE TABLE public.Appointment (
   id integer NOT NULL DEFAULT nextval('"Appointment_id_seq"'::regclass),
   date timestamp with time zone NOT NULL,
-  status text NOT NULL DEFAULT 'PENDING'::text CHECK (status = ANY (ARRAY['PENDING'::text, 'CONFIRMED'::text, 'COMPLETED'::text, 'CANCELLED'::text])),
   type text NOT NULL,
   userId uuid NOT NULL,
   aiReportId integer UNIQUE,
   is_emergency boolean,
-  original_time timestamp without time zone,
+  updatedDate timestamp without time zone,
   pet_id integer,
   vetId uuid,
+  bookingReason text,
   CONSTRAINT Appointment_pkey PRIMARY KEY (id),
   CONSTRAINT Appointment_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id),
   CONSTRAINT Appointment_aiReportId_fkey FOREIGN KEY (aiReportId) REFERENCES public.AiReport(id),
@@ -74,6 +74,8 @@ CREATE TABLE public.Order (
   items jsonb NOT NULL,
   createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   product_id integer,
+  phoneNumber bigint,
+  address text,
   CONSTRAINT Order_pkey PRIMARY KEY (id),
   CONSTRAINT Order_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id),
   CONSTRAINT Order_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.Product(id)
@@ -87,7 +89,7 @@ CREATE TABLE public.Pet (
   location text NOT NULL,
   images jsonb NOT NULL DEFAULT '[]'::jsonb,
   description text NOT NULL,
-  status text NOT NULL DEFAULT '''''Stray'''',''''Adopted'''',"Pending","Rejected"::text''''::text''::text'::text CHECK (status = ANY (ARRAY['Stray'::text, 'Adopted'::text])),
+  status text NOT NULL DEFAULT '''''Stray'''',''''Adopted'''',"Pending","Rejected"::text''''::text''::text'::text CHECK (status = ANY (ARRAY['Stray'::text, 'Pending'::text, 'Adopted'::text, 'Rejected'::text])),
   ownerId uuid NOT NULL,
   createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   adoptedAt timestamp with time zone,
@@ -104,6 +106,7 @@ CREATE TABLE public.Product (
   stock integer NOT NULL DEFAULT 0,
   imageUrl text NOT NULL,
   category text NOT NULL,
+  income double precision,
   CONSTRAINT Product_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.User (

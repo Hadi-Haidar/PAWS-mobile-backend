@@ -23,11 +23,13 @@ const petRoutes = require('./src/routes/petRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const appointmentRoutes = require('./src/routes/appointmentRoutes');
 const donationRoutes = require('./src/routes/donationRoutes');
+const productRoutes = require('./src/routes/productRoutes');
 
 app.use('/api/pets', petRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/donations', donationRoutes);
+app.use('/api/shop', productRoutes);
 
 // Test Route
 app.get("/", async (req, res) => {
