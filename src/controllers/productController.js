@@ -132,7 +132,7 @@ const createOrderIntent = async (req, res) => {
 const confirmOrder = async (req, res) => {
     try {
         const userId = req.user?.id;
-        const { paymentIntentId, items, totalAmount } = req.body;
+        const { paymentIntentId, items, totalAmount, address, phoneNumber } = req.body;
 
         if (!paymentIntentId || !items || !totalAmount) {
             return res.status(400).json({ error: 'Missing required fields' });
@@ -188,14 +188,40 @@ const confirmOrder = async (req, res) => {
                 type: 'SHOP_ORDER',
                 userId: userId || null,
                 items: items,
-                product_id: items[0]?.productId || null // Primary product for FK
+                product_id: items[0]?.productId || null, // Primary product for FK
+                address: address || null,
+                phoneNumber: phoneNumber || null
             }])
             .select()
             .single();
 
         if (orderError) {
             console.error('Order creation error:', orderError);
-            // Don't fail the whole request if order record fails
+        } else {
+            // --- ACTIVITY LOG (User) ---
+            try {
+                // If order is null (RLS hidden), use placeholder or timestamp
+                const orderId = (order && order.id) ? String(order.id) : `REF-${Date.now()}`;
+
+                await supabase.from('Activity').insert({
+                    userId,
+                    type: 'SHOP',
+                    title: 'Order Confirmed',
+                    subtitle: `Order #${orderId.split('-')[0]} placed successfully`,
+                    status: 'Confirmed',
+                    color: '#FFB7B2',
+                    details: {
+                        products: items, // Contains productId, name, price, quantity
+                        totalAmount: parseFloat(totalAmount),
+                        orderId: orderId,
+                        deliveryAddress: address,
+                        contactPhone: phoneNumber
+                    }
+                });
+
+            } catch (logError) {
+                console.error('CRITICAL: Failed to log activity:', logError);
+            }
         }
 
         res.status(201).json({

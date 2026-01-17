@@ -144,9 +144,10 @@ const updatePet = async (req, res) => {
         // First check if the pet exists and belongs to the user
         const { data: existingPet, error: fetchError } = await supabase
             .from('Pet')
-            .select('ownerId')
+            .select('ownerId, name, images')
             .eq('id', id)
             .single();
+
 
         if (fetchError || !existingPet) {
             return res.status(404).json({ error: 'Pet not found' });
@@ -177,6 +178,38 @@ const updatePet = async (req, res) => {
 
         if (error) {
             throw error;
+        }
+
+        // --- ACTIVITY LOG (Adoption) ---
+        if (req.body.status === 'Adopted' && req.body.ownerId && req.body.ownerId !== userId) {
+            try {
+                const newOwnerId = req.body.ownerId;
+                const oldOwnerId = userId;
+
+                // Alert New Owner (Adopter)
+                await supabase.from('Activity').insert({
+                    userId: newOwnerId,
+                    type: 'ADOPTION',
+                    title: 'Adoption Approved!',
+                    subtitle: `You are now the proud owner of ${existingPet.name}`,
+                    image: existingPet.images?.[0] || null,
+                    status: 'Success',
+                    color: '#CCFF66'
+                });
+
+                // Alert Old Owner (Shelter/User)
+                await supabase.from('Activity').insert({
+                    userId: oldOwnerId,
+                    type: 'ADOPTION',
+                    title: 'Pet Adopted',
+                    subtitle: `${existingPet.name} has found a new home!`,
+                    image: existingPet.images?.[0] || null,
+                    status: 'Success',
+                    color: '#CCFF66'
+                });
+            } catch (logError) {
+                // Silent failure for activity log
+            }
         }
 
         res.json(data);

@@ -40,6 +40,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/shop', productRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/activities', require('./src/routes/activityRoutes'));
 
 // Test Route
 app.get("/", async (req, res) => {

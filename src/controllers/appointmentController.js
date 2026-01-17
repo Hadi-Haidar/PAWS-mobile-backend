@@ -164,7 +164,7 @@ const createAppointment = async (req, res) => {
         // Verify the pet belongs to the user
         const { data: petData, error: petError } = await supabase
             .from('Pet')
-            .select('id, ownerId')
+            .select('id, ownerId, name')
             .eq('id', petId)
             .single();
 
@@ -216,6 +216,44 @@ const createAppointment = async (req, res) => {
             .single();
 
         if (error) throw error;
+
+        // --- ACTIVITY LOG (Appointment) ---
+        try {
+            let vetName = 'Any Available Vet';
+
+            if (vetId) {
+                const { data: vetData, error: vetError } = await supabase
+                    .from('User')
+                    .select('name, email')
+                    .eq('id', vetId)
+                    .single();
+
+                if (vetError) console.error('Error fetching vet name:', vetError);
+
+                if (vetData) {
+                    vetName = vetData.name || vetData.email || 'Doctor';
+                }
+            }
+
+            await supabase.from('Activity').insert({
+                userId,
+                type: 'APPOINTMENT',
+                title: 'Appointment Booked',
+                subtitle: `${bookingReason} - ${new Date(date).toLocaleDateString()}`,
+                date: new Date(date).toISOString(),
+                status: 'Confirmed',
+                color: '#A0E7E5',
+                details: {
+                    petName: petData.name,
+                    doctorName: vetName,
+                    visitReason: bookingReason,
+                    appointmentDate: date,
+                    type: (isEmergency ? 'Emergency' : 'Standard')
+                }
+            });
+        } catch (logError) {
+            // Silent failure for activity log
+        }
 
         res.status(201).json({
             message: 'Appointment booked successfully!',
