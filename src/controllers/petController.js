@@ -13,6 +13,9 @@ const getPets = async (req, res) => {
 
         if (ownerId) {
             query = query.eq('ownerId', ownerId);
+        } else {
+            // Main feed: only show available pets
+            query = query.eq('status', 'Stray');
         }
 
         if (type) {
@@ -173,6 +176,8 @@ const updatePet = async (req, res) => {
         if (location !== undefined) updateData.location = location;
         if (description !== undefined) updateData.description = description;
         if (imageUrl !== undefined) updateData.images = imageUrl ? [imageUrl] : [];
+        if (req.body.status !== undefined) updateData.status = req.body.status;
+        if (req.body.ownerId !== undefined) updateData.ownerId = req.body.ownerId;
 
         const { data, error } = await supabase
             .from('Pet')

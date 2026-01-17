@@ -62,8 +62,10 @@ CREATE TABLE public.Message (
   type text NOT NULL,
   isRead boolean,
   createdAt timestamp without time zone,
+  receiverId uuid,
   CONSTRAINT Message_pkey PRIMARY KEY (id),
-  CONSTRAINT Message_senderId_fkey FOREIGN KEY (senderId) REFERENCES public.User(id)
+  CONSTRAINT Message_senderId_fkey FOREIGN KEY (senderId) REFERENCES public.User(id),
+  CONSTRAINT Message_receiverId_fkey FOREIGN KEY (receiverId) REFERENCES auth.users(id)
 );
 CREATE TABLE public.Order (
   id integer NOT NULL DEFAULT nextval('"Order_id_seq"'::regclass),
