@@ -60,7 +60,7 @@ exports.getInbox = async (req, res) => {
         // Note: We use 'User' table (public.User) which should store names.
         const { data: usersData, error: userError } = await supabase
             .from('User')
-            .select('id, name, email')
+            .select('id, name, email, role')
             .in('id', otherUserIds);
 
         if (userError) {
@@ -71,7 +71,13 @@ exports.getInbox = async (req, res) => {
             // Map user details back to conversations
             uniqueConversations.forEach(conv => {
                 const userDetail = usersData.find(u => u.id === conv.otherUserId);
-                conv.name = userDetail?.name || userDetail?.email || 'Unknown User';
+
+                if (userDetail?.role === 'Admin') {
+                    conv.name = 'Main Shelter';
+                } else {
+                    conv.name = userDetail?.name || userDetail?.email || 'Unknown User';
+                }
+
                 conv.avatar = null; // Placeholder
             });
         }

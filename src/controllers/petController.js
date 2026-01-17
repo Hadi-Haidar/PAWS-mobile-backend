@@ -29,19 +29,8 @@ const getPets = async (req, res) => {
         if (search) {
             const searchTerm = search.trim();
 
-            // Search by name or location (text fields)
-            let orStrings = [
-                `name.ilike.%${searchTerm}%`,
-                `location.ilike.%${searchTerm}%`
-            ];
-
-            // If search term is a valid positive integer, also search by age
-            const isValidAge = /^\d+$/.test(searchTerm) && parseInt(searchTerm) > 0;
-            if (isValidAge) {
-                orStrings.push(`age.eq.${parseInt(searchTerm)}`);
-            }
-
-            query = query.or(orStrings.join(','));
+            // Search by name only
+            query = query.ilike('name', `%${searchTerm}%`);
         }
 
         // Default filter: only 'Stray' (available) pets unless specified otherwise?
