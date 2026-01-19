@@ -2,7 +2,7 @@ const supabase = require('../config/supabaseClient');
 const { createNotification } = require('../controllers/notificationController');
 
 const initDbListener = (io) => {
-    console.log('[DB Listener] Initializing Supabase Realtime listener...');
+
 
     supabase
         .channel('pet-status-changes')
@@ -13,7 +13,7 @@ const initDbListener = (io) => {
                 const newRecord = payload.new;
                 // const oldRecord = payload.old; // Often only contains ID
 
-                console.log(`[DB Listener] Pet update detected: ${newRecord.id}, Status: ${newRecord.status}`);
+
 
                 const ownerId = newRecord.ownerId;
 
@@ -50,7 +50,7 @@ const initDbListener = (io) => {
                             message,
                             data: { petId: newRecord.id }
                         });
-                        console.log(`[DB Listener] Notification sent to ${ownerId}`);
+
                     }
 
                     // Create Notification (Async)
@@ -63,7 +63,7 @@ const initDbListener = (io) => {
             { event: 'UPDATE', schema: 'public', table: 'Appointment' },
             async (payload) => {
                 const newRecord = payload.new;
-                console.log(`[DB Listener] Appointment update: ${newRecord.id}`);
+
 
                 const userId = newRecord.userId;
 
@@ -91,14 +91,14 @@ const initDbListener = (io) => {
                         message,
                         data: { appointmentId: newRecord.id }
                     });
-                    console.log(`[DB Listener] Appointment Notification sent to ${userId}`);
+
                 }
 
                 await createNotification(userId, 'appointment_update', title, message, { appointmentId: newRecord.id });
             }
         )
         .subscribe((status) => {
-            console.log(`[DB Listener] Subscription status: ${status}`);
+
         });
 };
 

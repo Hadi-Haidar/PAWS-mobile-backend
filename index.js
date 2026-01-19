@@ -18,7 +18,7 @@ app.use((req, res, next) => {
     next();
 });
 app.use(cors());
-app.use(morgan("dev"));
+// app.use(morgan("dev"));
 app.use(helmet());
 app.use(compression());
 
@@ -44,6 +44,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/activities', require('./src/routes/activityRoutes'));
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
+app.use('/api/reports', require('./src/routes/reportRoutes'));
 
 // Test Route
 app.get("/", async (req, res) => {

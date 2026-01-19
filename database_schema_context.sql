@@ -1,15 +1,20 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
-CREATE TABLE public.AiReport (
-  id integer NOT NULL DEFAULT nextval('"AiReport_id_seq"'::regclass),
-  summary text NOT NULL,
-  symptoms jsonb NOT NULL,
-  criticality text NOT NULL DEFAULT 'LOW'::text CHECK (criticality = ANY (ARRAY['LOW'::text, 'MEDIUM'::text, 'HIGH'::text])),
-  generatedAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+CREATE TABLE public.Activity (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
   userId uuid NOT NULL,
-  CONSTRAINT AiReport_pkey PRIMARY KEY (id),
-  CONSTRAINT AiReport_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id)
+  type text NOT NULL,
+  title text NOT NULL,
+  subtitle text,
+  status text,
+  image text,
+  color text,
+  date timestamp with time zone DEFAULT now(),
+  createdAt timestamp with time zone DEFAULT now(),
+  details jsonb,
+  CONSTRAINT Activity_pkey PRIMARY KEY (id),
+  CONSTRAINT Activity_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id)
 );
 CREATE TABLE public.Appointment (
   id integer NOT NULL DEFAULT nextval('"Appointment_id_seq"'::regclass),
@@ -18,13 +23,12 @@ CREATE TABLE public.Appointment (
   userId uuid NOT NULL,
   aiReportId integer UNIQUE,
   is_emergency boolean,
-  updatedDate timestamp without time zone,
+  updatedDate timestamp with time zone,
   pet_id integer,
   vetId uuid,
   bookingReason text,
   CONSTRAINT Appointment_pkey PRIMARY KEY (id),
   CONSTRAINT Appointment_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id),
-  CONSTRAINT Appointment_aiReportId_fkey FOREIGN KEY (aiReportId) REFERENCES public.AiReport(id),
   CONSTRAINT Appointment_pet_id_fkey FOREIGN KEY (pet_id) REFERENCES public.Pet(id),
   CONSTRAINT Appointment_vetId_fkey FOREIGN KEY (vetId) REFERENCES public.User(id)
 );
@@ -61,11 +65,24 @@ CREATE TABLE public.Message (
   content text NOT NULL,
   type text NOT NULL,
   isRead boolean,
-  createdAt timestamp without time zone,
+  createdAt timestamp with time zone,
   receiverId uuid,
+  is_forAdoption boolean,
   CONSTRAINT Message_pkey PRIMARY KEY (id),
   CONSTRAINT Message_senderId_fkey FOREIGN KEY (senderId) REFERENCES public.User(id),
   CONSTRAINT Message_receiverId_fkey FOREIGN KEY (receiverId) REFERENCES auth.users(id)
+);
+CREATE TABLE public.Notification (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  userId uuid NOT NULL,
+  type text NOT NULL CHECK (type = ANY (ARRAY['pet_status'::text, 'new_chat'::text, 'appointment_update'::text])),
+  title text NOT NULL,
+  message text NOT NULL,
+  data jsonb DEFAULT '{}'::jsonb,
+  isRead boolean DEFAULT false,
+  createdAt timestamp with time zone DEFAULT now(),
+  CONSTRAINT Notification_pkey PRIMARY KEY (id),
+  CONSTRAINT Notification_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id)
 );
 CREATE TABLE public.Order (
   id integer NOT NULL DEFAULT nextval('"Order_id_seq"'::regclass),
@@ -110,6 +127,18 @@ CREATE TABLE public.Product (
   category text NOT NULL,
   income double precision,
   CONSTRAINT Product_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.Report (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  userId uuid,
+  subject text NOT NULL,
+  description text NOT NULL,
+  type text NOT NULL,
+  status text DEFAULT 'Pending'::text,
+  createdAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  updatedAt timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT Report_pkey PRIMARY KEY (id),
+  CONSTRAINT Report_userId_fkey FOREIGN KEY (userId) REFERENCES public.User(id)
 );
 CREATE TABLE public.User (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
