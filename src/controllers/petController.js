@@ -1,15 +1,38 @@
 
 const supabase = require('../config/supabaseClient');
+const { createNotification } = require('./notificationController');
 
 // Get all pets with optional filtering
 const getPets = async (req, res) => {
     try {
-        const { type, search, region, limit = 20, page = 1, ownerId } = req.query;
+        const { type, search, region, limit = 20, page = 1, ownerId, source, exclude } = req.query;
         const offset = (page - 1) * limit;
 
         let query = supabase
             .from('Pet')
             .select('*', { count: 'exact' });
+
+        if (source === 'shelter') {
+            // 1. Find Admin IDs
+            const { data: admins } = await supabase
+                .from('User')
+                .select('id')
+                .in('role', ['Admin']);
+
+            const adminIds = admins?.map(u => u.id) || [];
+
+            // 2. Filter Pets by Admin Owner IDs
+            if (adminIds.length > 0) {
+                query = query.in('ownerId', adminIds);
+            } else {
+                // Force empty result if no admins
+                query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+            }
+        }
+
+        if (exclude) {
+            query = query.neq('ownerId', exclude);
+        }
 
         if (ownerId) {
             query = query.eq('ownerId', ownerId);
@@ -32,10 +55,6 @@ const getPets = async (req, res) => {
             // Search by name only
             query = query.ilike('name', `%${searchTerm}%`);
         }
-
-        // Default filter: only 'Stray' (available) pets unless specified otherwise?
-        // Requirement does not specify, but usually we show available pets.
-        // Let's assume we show all valid pets.
 
         const { data, error, count } = await query
             .range(offset, offset + limit - 1)
@@ -144,7 +163,7 @@ const updatePet = async (req, res) => {
         // First check if the pet exists and belongs to the user
         const { data: existingPet, error: fetchError } = await supabase
             .from('Pet')
-            .select('ownerId, name, images')
+            .select('ownerId, name, images, status')
             .eq('id', id)
             .single();
 
@@ -154,7 +173,18 @@ const updatePet = async (req, res) => {
         }
 
         if (existingPet.ownerId !== userId) {
-            return res.status(403).json({ error: 'You can only edit your own pets' });
+            // Check if user is Admin
+            const { data: requestUser } = await supabase
+                .from('User')
+                .select('role')
+                .eq('id', userId)
+                .single();
+
+            const isAdmin = requestUser?.role === 'Admin' || requestUser?.role === 'admin';
+
+            if (!isAdmin) {
+                return res.status(403).json({ error: 'You can only edit your own pets' });
+            }
         }
 
         // Build update object with only provided fields
@@ -219,7 +249,29 @@ const updatePet = async (req, res) => {
             }
         }
 
+        // --- PET STATUS NOTIFICATION (Became Stray/Listed) ---
+        const oldStatus = existingPet.status || '';
+        const newStatus = updateData.status || '';
+
+        if (oldStatus !== 'Stray' && newStatus === 'Stray') {
+            const io = req.app.get('io');
+            const title = 'Pet Listed!';
+            const message = `Your pet "${existingPet.name}" is now visible on the home feed.`;
+
+            await createNotification(existingPet.ownerId, 'pet_status', title, message, { petId: id });
+
+            if (io) {
+                io.to(existingPet.ownerId).emit('new_notification', {
+                    type: 'pet_status',
+                    title,
+                    message,
+                    data: { petId: id }
+                });
+            }
+        }
+
         res.json(data);
+
 
     } catch (err) {
         console.error('Error updating pet:', err);

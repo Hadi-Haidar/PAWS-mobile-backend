@@ -1,4 +1,5 @@
 const supabase = require('../config/supabaseClient');
+const { createNotification } = require('./notificationController');
 
 // Get user's pets (for pet selection)
 const getUserPets = async (req, res) => {
@@ -59,7 +60,7 @@ const getAppointments = async (req, res) => {
                 is_emergency,
                 updatedDate,
                 pet_id,
-                Pet:pet_id (id, name, type, images),
+                Pet:pet_id (id, name, type, images, ownerId, status),
                 vetId,
                 Vet:vetId (name)
             `)
@@ -68,12 +69,20 @@ const getAppointments = async (req, res) => {
 
         if (error) throw error;
 
-        // Filter out past appointments
-        // Keep if: (updatedDate exists AND is future) OR (updatedDate doesn't exist AND date is future)
+        // Filter out past appointments AND appointments for pets adopted by others
         const now = new Date();
         const activeAppointments = (data || []).filter(apt => {
+            // 1. Check Date
             const effectiveDate = apt.updatedDate ? new Date(apt.updatedDate) : new Date(apt.date);
-            return effectiveDate >= now;
+            if (effectiveDate < now) return false;
+
+            // 2. Check Pet Ownership Check
+            // If pet is adopted by someone else, hide the appointment
+            if (apt.Pet && apt.Pet.status === 'Adopted' && apt.Pet.ownerId !== userId) {
+                return false;
+            }
+
+            return true;
         });
 
         res.json(activeAppointments);
@@ -374,6 +383,68 @@ const getAvailableSlots = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch available slots' });
     }
 };
+// Update appointment (for rescheduling - typically by admin/vet)
+const updateAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { updatedDate } = req.body;
+
+        if (!updatedDate) {
+            return res.status(400).json({ error: 'Updated date is required' });
+        }
+
+        // Fetch current appointment
+        const { data: existingAppointment, error: fetchError } = await supabase
+            .from('Appointment')
+            .select('userId, date, Pet:pet_id (name)')
+            .eq('id', id)
+            .single();
+
+        if (fetchError || !existingAppointment) {
+            return res.status(404).json({ error: 'Appointment not found' });
+        }
+
+        // Update the appointment
+        const { data, error } = await supabase
+            .from('Appointment')
+            .update({
+                updatedDate: updatedDate,
+                original_time: existingAppointment.date // Store original date
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Send notification to user
+        const io = req.app.get('io');
+        const title = 'Appointment Rescheduled';
+        const petName = existingAppointment.Pet?.name || 'your pet';
+        const formattedDate = new Date(updatedDate).toLocaleDateString('en-US', {
+            weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        const message = `Your appointment for ${petName} has been rescheduled to ${formattedDate}`;
+
+        // DB
+        await createNotification(existingAppointment.userId, 'appointment_update', title, message, { appointmentId: id });
+
+        // Realtime
+        if (io) {
+            io.to(existingAppointment.userId).emit('new_notification', {
+                type: 'appointment_update',
+                title,
+                message,
+                data: { appointmentId: id, newDate: updatedDate }
+            });
+        }
+
+        res.json(data);
+    } catch (err) {
+        console.error('Error updating appointment:', err);
+        res.status(500).json({ error: 'Failed to update appointment' });
+    }
+};
 
 module.exports = {
     getUserPets,
@@ -381,6 +452,7 @@ module.exports = {
     getScheduleAlerts,
     createAppointment,
     cancelAppointment,
+    updateAppointment,
     getAvailableSlots,
     getVets
 };

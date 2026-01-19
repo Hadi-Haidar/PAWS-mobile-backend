@@ -27,4 +27,7 @@ router.post('/', appointmentController.createAppointment);
 // Cancel an appointment
 router.delete('/:id', appointmentController.cancelAppointment);
 
+// Update/Reschedule an appointment
+router.put('/:id', appointmentController.updateAppointment);
+
 module.exports = router;

@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 const supabase = require('./config/supabaseClient');
+const { createNotification } = require('./controllers/notificationController');
 
 const initSocket = (server) => {
     const io = new Server(server, {
@@ -71,6 +72,52 @@ const initSocket = (server) => {
 
                 // Confirm to sender (so they know it saved)
                 socket.emit("message_sent", savedMessage);
+
+                // Notification Logic (Consolidated)
+                const { data: existingNotif } = await supabase
+                    .from('Notification')
+                    .select('*')
+                    .eq('userId', receiverId)
+                    .eq('type', 'new_chat')
+                    .eq('isRead', false)
+                    .contains('data', { senderId: senderId })
+                    .maybeSingle();
+
+                if (existingNotif) {
+                    // Update existing
+                    const currentCount = existingNotif.data.count || 1;
+                    const newCount = currentCount + 1;
+                    const newMessage = `You have ${newCount} new messages from ${enrichedMessage.senderName}`;
+
+                    await supabase
+                        .from('Notification')
+                        .update({
+                            message: newMessage,
+                            data: { ...existingNotif.data, count: newCount },
+                            createdAt: new Date().toISOString()
+                        })
+                        .eq('id', existingNotif.id);
+
+                    io.to(receiverId).emit('notification_updated', {
+                        id: existingNotif.id,
+                        message: newMessage,
+                        count: newCount
+                    });
+
+                } else {
+                    // Create New
+                    const title = 'New Message';
+                    const message = `You have a new message from ${enrichedMessage.senderName}`;
+
+                    await createNotification(receiverId, 'new_chat', title, message, { senderId, count: 1 });
+
+                    io.to(receiverId).emit('new_notification', {
+                        type: 'new_chat',
+                        title,
+                        message,
+                        data: { senderId, count: 1 }
+                    });
+                }
 
             } catch (err) {
                 console.error("[Socket] Exception:", err);

@@ -23,7 +23,6 @@ app.use(helmet());
 app.use(compression());
 
 // Routes
-// Routes
 const supabase = require('./src/config/supabaseClient');
 const petRoutes = require('./src/routes/petRoutes');
 const userRoutes = require('./src/routes/userRoutes');
@@ -33,6 +32,7 @@ const productRoutes = require('./src/routes/productRoutes');
 const chatRoutes = require('./src/routes/chatRoutes');
 const aiRoutes = require('./src/routes/aiRoutes');
 const initSocket = require('./src/socket');
+const initDbListener = require('./src/services/dbListener');
 const http = require('http');
 
 app.use('/api/pets', petRoutes);
@@ -43,6 +43,7 @@ app.use('/api/shop', productRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/activities', require('./src/routes/activityRoutes'));
+app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 
 // Test Route
 app.get("/", async (req, res) => {
@@ -57,6 +58,8 @@ app.get("/", async (req, res) => {
 
 const server = http.createServer(app);
 const io = initSocket(server);
+app.set('io', io);
+initDbListener(io);
 
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
