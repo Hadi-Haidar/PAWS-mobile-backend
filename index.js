@@ -31,6 +31,7 @@ const appointmentRoutes = require('./src/routes/appointmentRoutes');
 const donationRoutes = require('./src/routes/donationRoutes');
 const productRoutes = require('./src/routes/productRoutes');
 const chatRoutes = require('./src/routes/chatRoutes');
+const aiRoutes = require('./src/routes/aiRoutes');
 const initSocket = require('./src/socket');
 const http = require('http');
 
@@ -40,6 +41,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/shop', productRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/activities', require('./src/routes/activityRoutes'));
 
 // Test Route

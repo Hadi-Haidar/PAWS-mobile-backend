@@ -109,7 +109,7 @@ const createPet = async (req, res) => {
             age: age ? parseInt(age) : null,
             location,
             description: description || name,
-            status: 'Stray', // STRICTLY 'Stray' to pass Check Constraint
+            status: 'Pending', // Default to Pending until approved
             images: imageUrl ? [imageUrl] : [], // JSONB array
             Latitude: latitude ? parseFloat(latitude) : null,
             Longitude: longitude ? parseFloat(longitude) : null
@@ -166,7 +166,14 @@ const updatePet = async (req, res) => {
         if (location !== undefined) updateData.location = location;
         if (description !== undefined) updateData.description = description;
         if (imageUrl !== undefined) updateData.images = imageUrl ? [imageUrl] : [];
-        if (req.body.status !== undefined) updateData.status = req.body.status;
+
+        if (req.body.status !== undefined) {
+            updateData.status = req.body.status;
+        } else {
+            // If editing details (and not explicitly changing status), reset to Pending
+            updateData.status = 'Pending';
+        }
+
         if (req.body.ownerId !== undefined) updateData.ownerId = req.body.ownerId;
 
         const { data, error } = await supabase
