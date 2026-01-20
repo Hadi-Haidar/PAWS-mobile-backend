@@ -300,6 +300,28 @@ const deletePet = async (req, res) => {
             return res.status(403).json({ error: 'You can only delete your own pets' });
         }
 
+        // Delete related Appointments first
+        const { error: appointmentError } = await supabase
+            .from('Appointment')
+            .delete()
+            .eq('pet_id', id);
+
+        if (appointmentError) {
+            console.error('Error deleting related appointments:', appointmentError);
+            throw appointmentError;
+        }
+
+        // Delete related Medical Records
+        const { error: medicalError } = await supabase
+            .from('MedicalRecord')
+            .delete()
+            .eq('pet_id', id);
+
+        if (medicalError) {
+            console.error('Error deleting related medical records:', medicalError);
+            throw medicalError;
+        }
+
         const { error } = await supabase
             .from('Pet')
             .delete()
